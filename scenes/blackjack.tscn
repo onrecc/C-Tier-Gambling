@@ -1,3 +1,120 @@
-[gd_scene format=3 uid="uid://coxkmq4keghwx"]
+[gd_scene load_steps=3 format=3 uid="uid://coxkmq4keghwx"]
+
+[ext_resource type="Script" uid="uid://1l6k6icvwnrg" path="res://scenes/blackjack.gd" id="1_3frkl"]
+[ext_resource type="AudioStream" uid="uid://dxxge1lwrr2et" path="res://card-sounds-35956.mp3" id="2_kvb06"]
 
 [node name="Blackjack" type="Node2D"]
+script = ExtResource("1_3frkl")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+offset_right = 1160.0
+offset_bottom = 654.0
+color = Color(0.54142547, 0.18714511, 0.17901456, 1)
+
+[node name="DealerLabel" type="Label" parent="."]
+offset_left = 207.0
+offset_top = 72.0
+offset_right = 258.0
+offset_bottom = 95.0
+scale = Vector2(2.0658505, 2.0658505)
+text = "Dealer"
+
+[node name="PlayerLabel" type="Label" parent="."]
+offset_left = 218.00002
+offset_top = 473.0
+offset_right = 269.0
+offset_bottom = 496.00003
+scale = Vector2(2.0658505, 2.0658505)
+text = "You"
+
+[node name="DealerHandLabel" type="Label" parent="."]
+offset_left = 481.0
+offset_top = 110.0
+offset_right = 521.0
+offset_bottom = 133.0
+scale = Vector2(2.8001533, 2.8001533)
+
+[node name="PlayerHandLabel" type="Label" parent="."]
+offset_left = 476.0
+offset_top = 415.0
+offset_right = 516.0
+offset_bottom = 438.0
+scale = Vector2(2.8001533, 2.8001533)
+
+[node name="StatusLabel" type="Label" parent="."]
+offset_left = 110.0
+offset_top = 278.0
+offset_right = 150.0
+offset_bottom = 301.0
+scale = Vector2(1.9624486, 1.9624486)
+
+[node name="BetRow" type="HBoxContainer" parent="."]
+offset_left = 944.0
+offset_top = 537.0
+offset_right = 1061.0
+offset_bottom = 577.0
+
+[node name="BetSpin" type="SpinBox" parent="BetRow"]
+layout_mode = 2
+max_value = 1000.0
+value = 10.0
+
+[node name="Label" type="Label" parent="BetRow"]
+layout_mode = 2
+text = "Bet"
+horizontal_alignment = 1
+
+[node name="ButtonsRow" type="HBoxContainer" parent="."]
+offset_left = 369.0
+offset_top = 570.00006
+offset_right = 674.0
+offset_bottom = 610.00006
+scale = Vector2(1.3025091, 1.3025091)
+
+[node name="DealButton" type="Button" parent="ButtonsRow"]
+layout_mode = 2
+text = "Deal"
+
+[node name="HitButton" type="Button" parent="ButtonsRow"]
+layout_mode = 2
+text = "Hit"
+
+[node name="StandButton" type="Button" parent="ButtonsRow"]
+layout_mode = 2
+text = "Stand
+"
+
+[node name="DoubleButton" type="Button" parent="ButtonsRow"]
+layout_mode = 2
+text = "Double"
+
+[node name="NewRoundButton" type="Button" parent="ButtonsRow"]
+layout_mode = 2
+text = "New Round"
+
+[node name="CoinsLabel" type="Label" parent="."]
+offset_left = 986.99994
+offset_top = 39.0
+offset_right = 1048.0
+offset_bottom = 62.0
+scale = Vector2(1.7769773, 1.7769773)
+text = "Coins: 0"
+
+[node name="CardSFX" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("2_kvb06")
+
+[node name="ExitButton" type="Button" parent="."]
+offset_left = 46.0
+offset_top = 572.00006
+offset_right = 83.0
+offset_bottom = 603.00006
+scale = Vector2(1.7151563, 1.7151563)
+text = "Exit
+"
+
+[connection signal="pressed" from="ButtonsRow/DealButton" to="." method="_on_deal_pressed"]
+[connection signal="pressed" from="ButtonsRow/HitButton" to="." method="_on_hit_pressed"]
+[connection signal="pressed" from="ButtonsRow/StandButton" to="." method="_on_stand_pressed"]
+[connection signal="pressed" from="ButtonsRow/DoubleButton" to="." method="_on_double_pressed"]
+[connection signal="pressed" from="ButtonsRow/NewRoundButton" to="." method="_on_new_round_pressed"]
+[connection signal="pressed" from="ExitButton" to="." method="_on_exit_pressed"]

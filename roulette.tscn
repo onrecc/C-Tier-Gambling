@@ -245,7 +245,7 @@ offset_bottom = 594.0
 theme_override_fonts/normal_font = ExtResource("4_81wp0")
 theme_override_font_sizes/normal_font_size = 32
 bbcode_enabled = true
-text = "Welcome to Roulette!"
+text = "Press spin to spin"
 
 [node name="1to12" type="Button" parent="CanvasLayer"]
 offset_left = 651.0
@@ -682,5 +682,19 @@ offset_bottom = 275.0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 48
 
+[node name="Label2" type="Label" parent="."]
+offset_left = 407.0
+offset_top = 562.0
+offset_right = 581.0
+offset_bottom = 607.0
+theme_override_font_sizes/font_size = 28
+text = "Coins: 1000"
+
 [node name="WheelSFX" type="AudioStreamPlayer2D" parent="."]
 stream = SubResource("AudioStreamGenerator_70hxm")
+
+[node name="Label3" type="Label" parent="."]
+offset_left = 411.0
+offset_top = 521.0
+offset_right = 451.0
+offset_bottom = 544.0

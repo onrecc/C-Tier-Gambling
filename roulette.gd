@@ -1,19 +1,26 @@
 extends Node2D
 
 @export var label_path: NodePath = NodePath("Label")
+@export var coins_label_path: NodePath = NodePath("Label2") # NEW: where to show coins
+@export var winnings_label_path: NodePath = NodePath("Label3") # NEW: where to show "You won X"
 @export var spin_button_path: NodePath = NodePath("./CanvasLayer/spin")
 @export var spinnyboi_path: NodePath = NodePath("./spinnyboi")
 @export var exit_button_path: NodePath = NodePath("./CanvasLayer/exit")
 
-@export var min_steps: int = 40
-@export var max_steps: int = 80
+@export var min_steps: int = 20
+@export var max_steps: int = 40
 @export var start_delay: float = 0.01
 @export var end_delay: float = 0.18
 
 @export var pop_scale: float = 1.35
 @export var pop_duration: float = 0.12
+@export var winnings_pop_scale: float = 1.15
+@export var winnings_pop_duration: float = 0.10
+@export var winnings_clear_after: float = 2.0
 
 @onready var label: Label = null
+@onready var coins_label: Label = null
+@onready var winnings_label: Label = null
 @onready var spin_button: Button = null
 @onready var spinnyboi: Sprite2D = null
 @onready var wheel_sfx: AudioStreamPlayer2D = $WheelSFX
@@ -28,6 +35,7 @@ var slots: Array[String] = []
 var soft_red   := Color("ffcccc")
 var soft_black := Color("aaaaaa")
 var soft_green := Color("aaffcc")
+var soft_gray  := Color("cccccc")
 
 var colors := {
 	"0": soft_green, "00": soft_green,
@@ -43,28 +51,40 @@ var colors := {
 	"14": soft_black, "2": soft_red
 }
 
-# ---- Betting System ----
 var bets: Array[Dictionary] = []
-var player_balance: int = 1000
+
+func get_coins() -> int:
+	return State.coins
+
+func set_coins(v: int) -> void:
+	State.coins = max(0, v)
+	_update_coins_label()
+	if State.has_signal("coins_changed"):
+		State.emit_signal("coins_changed", State.coins)
+
+func add_coins(delta: int) -> void:
+	if delta == 0:
+		return
+	set_coins(get_coins() + delta)
 
 func place_bet(bet_type: String, value, amount: int, button_name: String = ""):
-	if amount <= 0 or amount > player_balance:
+	if amount <= 0 or amount > get_coins():
 		return
-	player_balance -= amount	
+	add_coins(-amount)  # deduct immediately on placing the bet
 	bets.append({"type": bet_type, "value": value, "amount": amount, "button": button_name})
 
 func evaluate_bets(winning_number: String) -> int:
-	var total_winnings = 0
-	var winning_color = ""
+	var total_winnings := 0
+	var winning_color := ""
 	if winning_number in ["0","00"]:
 		winning_color = "green"
 	else:
 		if _get_color(winning_number) == soft_red:
 			winning_color = "red"
-		else:	
+		else:
 			winning_color = "black"
 
-	var winning_even_odd = ""
+	var winning_even_odd := ""
 	if winning_number in ["0","00"]:
 		winning_even_odd = "none"
 	else:
@@ -73,24 +93,24 @@ func evaluate_bets(winning_number: String) -> int:
 		else:
 			winning_even_odd = "odd"
 
-	var winning_range = ""
+	var winning_range := ""
 	if winning_number in ["0","00"]:
 		winning_range = "none"
 	else:
 		var num = int(winning_number)
 		if num <= 18:
-			winning_range = "1-18" 
+			winning_range = "1-18"
 		else:
 			winning_range = "19-36"
 
-	var winning_dozen = ""
+	var winning_dozen := ""
 	if winning_number in ["0","00"]:
 		winning_dozen = "none"
 	else:
-		var num = int(winning_number)
-		if num <= 12:
+		var num2 = int(winning_number)
+		if num2 <= 12:
 			winning_dozen = "1-12"
-		elif num <= 24:
+		elif num2 <= 24:
 			winning_dozen = "13-24"
 		else:
 			winning_dozen = "25-36"
@@ -112,11 +132,10 @@ func evaluate_bets(winning_number: String) -> int:
 			"dozen":
 				if bet["value"] == winning_dozen:
 					total_winnings += bet["amount"] * 3
-	bets.clear()
-	player_balance += total_winnings
-	return total_winnings
 
-# -------------------------
+	bets.clear()
+	add_coins(total_winnings)
+	return total_winnings
 
 func _ready() -> void:
 	rng.randomize()
@@ -132,6 +151,23 @@ func _ready() -> void:
 		return
 	label.text = slots[rng.randi_range(0, slots.size() - 1)]
 	label.scale = Vector2.ONE
+
+	var cnode: Node = get_node_or_null(coins_label_path)
+	if cnode is Label:
+		coins_label = cnode
+	else:
+		coins_label = null
+	_update_coins_label()
+
+	var wnode: Node = get_node_or_null(winnings_label_path)
+	if wnode is Label:
+		winnings_label = wnode
+		winnings_label.text = ""
+	else:
+		winnings_label = null
+
+	if State.has_signal("coins_changed"):
+		State.connect("coins_changed", Callable(self, "_on_coins_changed"))
 
 	spin_button = get_node_or_null(spin_button_path)
 	if spin_button and spin_button is Button:
@@ -159,9 +195,9 @@ func _connect_bet_buttons() -> void:
 	for btn in cl.get_children():
 		if btn is Button:
 			btn.pressed.connect(_on_bet_button_pressed.bind(btn.name))
-			
+
 func _update_button_bet_display(button_name: String) -> void:
-	var button = $CanvasLayer.get_node(button_name) as Button
+	var button = $CanvasLayer.get_node_or_null(button_name) as Button
 	if not button: return
 
 	var total_bet = _get_total_bet_for_button(button_name)
@@ -175,7 +211,7 @@ func _update_button_bet_display(button_name: String) -> void:
 			button.text = button_name.capitalize() + " (" + str(total_bet) + ")"
 		else:
 			button.text = button_name.capitalize()
-			
+
 func _reset_bets() -> void:
 	bets.clear()
 	for child in $CanvasLayer.get_children():
@@ -190,7 +226,10 @@ func _reset_bets() -> void:
 
 func _on_bet_button_pressed(name: String) -> void:
 	var bet_amount = 10
-	var button = $CanvasLayer.get_node(name) as Button
+	var button = $CanvasLayer.get_node_or_null(name) as Button
+
+	if get_coins() < bet_amount:
+		return
 
 	match name.to_lower():
 		"even":
@@ -220,12 +259,15 @@ func _on_bet_button_pressed(name: String) -> void:
 				var num = int(name)
 				if num >= 1 and num <= 36:
 					place_bet("number", str(num), bet_amount, str(num))
-					
+
 	if button:
 		var total_bet = _get_total_bet_for_button(name)
-		button.text = name.capitalize() + " (" + str(total_bet) + ")"
-
-	print("Placed bet: ", bets)
+		if name.is_valid_int() or name in ["0","00"]:
+			var bet_label = button.get_node_or_null("BetLabel")
+			if bet_label:
+				bet_label.text = str(total_bet) if total_bet > 0 else ""
+		else:
+			button.text = name.capitalize() + (" (" + str(total_bet) + ")" if total_bet > 0 else "")
 
 func _get_total_bet_for_button(name: String) -> int:
 	var total := 0
@@ -251,7 +293,7 @@ func play_tick(frequency: float = 1000.0, duration: float = 0.03):
 		var t = i / sample_rate
 		var sample = sin(2.0 * PI * frequency * t) * 0.3 
 		audio_playback.push_frame(Vector2(sample, sample))
-		
+
 func play_end_sfx(frequency: float = 1600.0, duration: float = 0.50):
 	if not audio_playback:
 		return
@@ -265,7 +307,7 @@ func play_end_sfx(frequency: float = 1600.0, duration: float = 0.50):
 
 func _find_first_label() -> Label:
 	return _recursive_find_label(self)
-	
+
 func _get_color(value: String) -> Color:
 	return colors.get(value, Color.WHITE)
 
@@ -279,10 +321,10 @@ func _recursive_find_label(node: Node) -> Label:
 	return null
 
 func _on_exit_pressed() -> void:
-	var casino_scene_path := "res://Casino.tscn"
+	var casino_scene_path := "res://casino.tscn"
 	var err = get_tree().change_scene_to_file(casino_scene_path)
 	if err != OK:
-		push_error("Failed to change scene to Casino.tscn")
+		push_error("Failed to change scene to casino.tscn")
 
 func spin() -> void:
 	if not label:
@@ -291,6 +333,8 @@ func spin() -> void:
 	var n: int = slots.size()
 	if n == 0:
 		return
+
+	_set_winnings_text("")
 
 	var target_index: int = rng.randi_range(0, n - 1)
 	var start_index: int = rng.randi_range(0, n - 1)
@@ -315,7 +359,7 @@ func spin() -> void:
 
 		if spinnyboi:
 			spinnyboi.rotation = total_rotations * eased
-			
+
 		if audio_playback:
 			var freq = lerp(1400, 800, eased)
 			play_tick(freq, 0.03)
@@ -327,10 +371,11 @@ func spin() -> void:
 	label.add_theme_color_override("font_color", _get_color(slots[target_index]))
 	_play_pop()
 	play_end_sfx()
-	_reset_bets()
 
 	var winnings = evaluate_bets(slots[target_index])
-	print("Winning number: ", slots[target_index], " | Player won: ", winnings, " | Balance: ", player_balance)
+	print("Winning number: ", slots[target_index], " | Player won: ", winnings, " | Coins: ", get_coins())
+	_show_winnings(winnings) # NEW
+	_reset_bets()
 
 func _play_pop() -> void:
 	var tw: Tween = create_tween()
@@ -341,3 +386,46 @@ func _play_pop() -> void:
 	var track2 = tw.tween_property(label, "scale", Vector2.ONE, pop_duration)
 	if track2:
 		track2.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+
+func _on_coins_changed(new_amount: int) -> void:
+	_update_coins_label()
+
+func _update_coins_label() -> void:
+	if coins_label:
+		coins_label.text = "Coins: %d" % get_coins()
+
+func _show_winnings(amount: int) -> void:
+	var total_bet := _get_last_total_bet()  # NEW: track how much was bet last spin
+
+	var text := ""
+	var color := soft_gray
+
+	if amount > 0:
+		text = "You won %d coin%s!" % [amount, ("s" if amount != 1 else "")]
+		color = soft_green
+	else:
+		text = "Oh no! You lost" % [total_bet, ("s" if total_bet != 1 else "")]
+		color = soft_red
+
+	_set_winnings_text(text)
+
+	if winnings_label:
+		winnings_label.add_theme_color_override("font_color", color)
+
+		var tw := create_tween()
+		tw.tween_property(winnings_label, "scale", Vector2(winnings_pop_scale, winnings_pop_scale), winnings_pop_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.tween_property(winnings_label, "scale", Vector2.ONE, winnings_pop_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+
+		await get_tree().create_timer(winnings_clear_after).timeout
+		if winnings_label and winnings_label.text == text:
+			_set_winnings_text("")
+
+func _set_winnings_text(t: String) -> void:
+	if winnings_label:
+		winnings_label.text = t
+
+func _get_last_total_bet() -> int:
+	var total := 0
+	for bet in bets:
+		total += bet["amount"]
+	return total

@@ -10,10 +10,15 @@ config_version=5
 
 [application]
 
-config/name="ctiergambling"
-run/main_scene="uid://b7sd2is7k36pq"
+config/name="C-Tier Gambling"
+run/main_scene="uid://cddof3jd32r0b"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
+
+[autoload]
+
+PhantomCameraManager="*res://addons/phantom_camera/scripts/managers/phantom_camera_manager.gd"
+State="*res://state.gd"
 
 [display]
 
@@ -21,7 +26,7 @@ window/stretch/mode="canvas_items"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/godot_super-wakatime/plugin.cfg")
+enabled=PackedStringArray("res://addons/godot_super-wakatime/plugin.cfg", "res://addons/phantom_camera/plugin.cfg")
 
 [input]
 
